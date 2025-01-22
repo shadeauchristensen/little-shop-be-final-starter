@@ -12,6 +12,7 @@ class Coupon < ApplicationRecord
     before_destroy :prevent_deletion
 
     scope :active, -> { where(status: "active") }
+    scope :inactive, -> { where(status: "inactive") }
   
     private
   
