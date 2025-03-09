@@ -3,8 +3,9 @@ require 'rails_helper'
 RSpec.describe "Merchants Coupons API", type: :request do
   describe "GET api/v1/merchants/:merchants_id/coupons/:id" do
     let!(:merchant) { create(:merchant) }
+    let!(:customer) { create(:customer) }
     let!(:coupon) { create(:coupon, merchant: merchant) }
-    let!(:invoices) { create_list(:invoice, 3, coupon: coupon) }
+    let!(:invoices) { create_list(:invoice, 3, merchant: merchant, customer: customer, coupon: coupon) }
 
 
     describe "validations" do
@@ -12,14 +13,37 @@ RSpec.describe "Merchants Coupons API", type: :request do
         expect(coupon).to be_valid
       end
     end
-    
+
     describe "instances of coupons" do
       it "counts the instances of coupons: coupon_count" do
         expect(coupon.usage_count).to eq(3)
       end
     end
 
-    describe "request coupon" do
+    describe "GET /api/v1/merchants/:merchant_id/coupons" do
+      it "returns all coupons for a merchant" do
+        get "/api/v1/merchants/#{merchant.id}/coupons"
+
+        expect(response).to have_http_status(:ok)
+
+        json = JSON.parse(response.body, symbolize_names: true)
+
+        expect(json[:data].length).to eq(3)
+
+        coupon_attributes = coupon[:attributes]
+
+        json[:data].each do |coupon|
+          expect(coupon).to have_key(:id)
+          expect(coupon_attributes).to have_key(:name)
+          expect(coupon_attributes).to have_key(:code)
+          expect(coupon_attributes).to have_key(:discount_type)
+          expect(coupon_attributes).to have_key(:discount_value)
+          expect(coupon_attributes).to have_key(:active)
+        end
+      end
+    end
+
+    describe "GET /api/v1/merchants/:merchant_id/coupons/:id" do
       it "returns the usage_count of coupon" do
         get "/api/v1/merchants/#{merchant.id}/coupons/#{coupon.id}"
 
