@@ -60,6 +60,24 @@ class Api::V1::Merchants::CouponsController < ApplicationController
             render json: { error: "Something went wrong: #{e.message}" }, status: :internal_server_error
         end
     end
+
+    def activate
+        begin
+            coupon = Coupon.find(params[:id])
+    
+            if coupon.merchant.coupons.where(active: true).count >= 5
+                render json: { error: "Merchant cannot have more than 5 active coupons." }, status: :unprocessable_entity
+            else
+                coupon.update!(active: true)
+                render json: CouponSerializer.new(coupon), status: :ok
+            end
+    
+        rescue ActiveRecord::RecordNotFound
+            render json: { error: "Coupon not found." }, status: :not_found
+        rescue StandardError => e
+            render json: { error: "Something went wrong: #{e.message}" }, status: :internal_server_error
+        end
+    end
     
 
     
