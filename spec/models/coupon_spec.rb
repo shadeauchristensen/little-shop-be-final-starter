@@ -31,6 +31,35 @@ RSpec.describe Coupon, type: :model do
             end
         end
     end
+
+    describe "deactivation logic" do
+        let!(:merchant) { create(:merchant) }
+        let!(:coupon) { create(:coupon, merchant: merchant, active: true) }
+        
+        describe "when there are no pending invoices" do
+            it "allows the coupon to be deactivated" do
+                expect(coupon.has_pending_invoices?).to be false
+        
+                coupon.update!(active: false)
+        
+                expect(coupon.active).to be false
+            end
+        end
+      
+        describe "when there are pending invoices" do
+          let!(:customer) { create(:customer) }
+          let!(:invoice) { create(:invoice, merchant: merchant, coupon: coupon, status: "pending") }
+      
+            it "prevents the coupon from being deactivated" do
+                expect(coupon.has_pending_invoices?).to be true
+        
+                expect(coupon.update(active: false)).to be false
+                expect(coupon.errors.full_messages).to include("Cannot deactivate coupon with pending invoices")
+                
+                expect(coupon.reload.active).to be true # Ensuring it's still active
+            end
+        end
+    end
   
     describe "relationships" do
         it { should belong_to :merchant }

@@ -120,5 +120,30 @@ RSpec.describe "Merchants Coupons API", type: :request do
         expect(json[:errors]).to include("Merchant cannot have more than 5 active coupons.")
       end
     end
+
+    describe "PATCH /api/v1/merchants/:merchant_id/coupons/:id/deactivate" do
+      it "successfully deactivates a coupon" do
+        coupon = create(:coupon, merchant: @merchant, active: true)
+    
+        patch "/api/v1/merchants/#{@merchant.id}/coupons/#{coupon.id}/deactivate"
+    
+        expect(response).to have_http_status(:ok)
+    
+        json = JSON.parse(response.body, symbolize_names: true)
+        expect(json[:data][:attributes][:active]).to eq(false)
+      end
+
+      it "does not deactivate a coupon if it has pending invoices" do
+        coupon = create(:coupon, merchant: @merchant, active: true)
+        create(:invoice, merchant: @merchant, customer: @customer, coupon: coupon, status: "pending")
+      
+        patch "/api/v1/merchants/#{@merchant.id}/coupons/#{coupon.id}/deactivate"
+      
+        expect(response).to have_http_status(:unprocessable_entity)
+      
+        json = JSON.parse(response.body, symbolize_names: true)
+        expect(json[:error]).to eq("Coupon cannot be deactivated while it has pending invoices.")
+      end
+    end
   end
 end
