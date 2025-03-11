@@ -102,7 +102,7 @@ RSpec.describe "Merchants Coupons API", type: :request do
 
       it "does not allow more than 5 active coupons" do
         merchant = create(:merchant)
-        create_list(:coupon, 5, merchant: merchant, active: true) # Ensure 5 active coupons exist
+        create_list(:coupon, 5, merchant: merchant, active: true) # Ensures that 5 active coupons exist
     
         coupon_params = { 
           coupon: { 
@@ -160,6 +160,50 @@ RSpec.describe "Merchants Coupons API", type: :request do
         expect(json[:data][:id]).to eq(coupon.id.to_s)
         expect(json[:data][:type]).to eq("coupon")
         expect(json[:data][:attributes][:active]).to be true
+      end
+    end
+
+    describe "GET /api/v1/merchants/:merchant_id/coupons?status=filtered" do
+      before(:each) do
+        @merchant = create(:merchant)
+        @active_coupons = create_list(:coupon, 3, merchant: @merchant, active: true)
+        @inactive_coupons = create_list(:coupon, 2, merchant: @merchant, active: false) # Look at line 206
+      end
+    
+      it "returns only active coupons when filtered by status=active" do
+        get "/api/v1/merchants/#{@merchant.id}/coupons", params: { status: "active" }
+    
+        expect(response).to have_http_status(:ok)
+    
+        json = JSON.parse(response.body, symbolize_names: true)
+    
+        expect(json[:data].size).to eq(3)
+        json[:data].each do |coupon|
+          expect(coupon[:attributes][:active]).to be true
+        end
+      end
+    
+      it "returns only inactive coupons when filtered by status=inactive" do
+        get "/api/v1/merchants/#{@merchant.id}/coupons", params: { status: "inactive" }
+    
+        expect(response).to have_http_status(:ok)
+    
+        json = JSON.parse(response.body, symbolize_names: true)
+    
+        expect(json[:data].size).to eq(2)
+        json[:data].each do |coupon|
+          expect(coupon[:attributes][:active]).to be false
+        end
+      end
+    
+      it "returns all coupons if no status param is given" do
+        get "/api/v1/merchants/#{@merchant.id}/coupons"
+    
+        expect(response).to have_http_status(:ok)
+    
+        json = JSON.parse(response.body, symbolize_names: true)
+    
+        expect(json[:data].size).to eq(5) # 3 active + 2 inactive
       end
     end
   end

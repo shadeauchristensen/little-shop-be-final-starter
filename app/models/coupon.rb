@@ -10,6 +10,9 @@ class Coupon < ApplicationRecord
     validate :merchant_active_coupon_limit, on: :create
     validate :cannot_deactivate_with_pending_invoices, on: :update
 
+    scope :active, -> { where(active: true) }
+    scope :inactive, -> { where(active: false) }
+
     def usage_count
         invoices.count
     end
@@ -45,5 +48,17 @@ class Coupon < ApplicationRecord
         raise ActiveRecord::RecordInvalid, "Merchant cannot have more than 5 active coupons." unless can_be_activated?
         
         update!(active: true)
+    end
+
+
+    def self.filter_by_status(merchant, status)
+        case status # Checks value of status, used when we want to evaluate multiple conditions
+        when "active"
+            merchant.coupons.active
+        when "inactive"
+            merchant.coupons.inactive
+        else
+            merchant.coupons
+        end
     end
 end
