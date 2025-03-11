@@ -37,4 +37,13 @@ class CouponSerializer
             false
         end
     end
+
+    attribute :has_pending_invoices do |coupon|
+        begin
+            coupon.has_pending_invoices?
+        rescue StandardError => e
+            Rails.logger.error("Error checking pending invoices: #{e.message}")
+            false
+        end
+    end
 end

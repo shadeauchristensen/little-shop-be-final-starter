@@ -8,6 +8,7 @@ class Coupon < ApplicationRecord
     validates :discount_value, presence: true, numericality: { greater_than: 0 }
     validates :merchant, presence: true
     validate :merchant_active_coupon_limit, on: :create
+    validate :cannot_deactivate_with_pending_invoices, on: :update
 
     def usage_count
         invoices.count
@@ -19,12 +20,20 @@ class Coupon < ApplicationRecord
         end
     end
 
-    def can_be_deactivated?
-        invoices.where(status: "pending").none?
+    def has_pending_invoices?
+        invoices.where(status: 'pending').exists?
     end
 
     def deactivate!
-        return false unless can_be_deactivated?
-        update(active: false)
+        if has_pending_invoices?
+          raise ActiveRecord::RecordInvalid, "Coupon cannot be deactivated while it has pending invoices."
+        end
+        update!(active: false)
+    end
+
+    def cannot_deactivate_with_pending_invoices
+        if has_pending_invoices? && !active
+          errors.add(:base, "Cannot deactivate coupon with pending invoices")
+        end
     end
 end
