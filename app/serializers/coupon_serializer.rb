@@ -46,4 +46,13 @@ class CouponSerializer
             false
         end
     end
+
+    attribute :can_be_activated do |coupon|
+        begin
+          !coupon.merchant_active_coupon_limit
+        rescue StandardError => e
+          Rails.logger.error("Error checking activation status: #{e.message}")
+          false
+        end
+    end
 end

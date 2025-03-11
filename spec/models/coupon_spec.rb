@@ -32,7 +32,7 @@ RSpec.describe Coupon, type: :model do
         end
     end
 
-    describe "deactivation logic" do
+    describe "deactivate!" do
         let!(:merchant) { create(:merchant) }
         let!(:coupon) { create(:coupon, merchant: merchant, active: true) }
         
@@ -60,6 +60,20 @@ RSpec.describe Coupon, type: :model do
             end
         end
     end
+
+    describe "#activate!" do
+        let!(:merchant) { create(:merchant) }
+        let!(:active_coupons) { create_list(:coupon, 4, merchant: merchant, active: true) }
+        let!(:coupon) { create(:coupon, merchant: merchant, active: false) }
+
+        it "activates a coupon successfully if under the 5 coupon limit" do
+            expect(coupon.active).to be false
+            
+            coupon.activate!
+
+            expect(coupon.reload.active).to be true
+        end
+    end    
   
     describe "relationships" do
         it { should belong_to :merchant }
