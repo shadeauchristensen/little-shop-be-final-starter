@@ -44,6 +44,15 @@ class Api::V1::Merchants::CouponsController < ApplicationController
         end
     end
 
+    def update
+        coupon = Coupon.find(params[:id])
+        if coupon.update(coupon_params)
+          render json: CouponSerializer.new(coupon), status: :ok
+        else
+          render json: { errors: coupon.errors.full_messages }, status: :unprocessable_entity
+        end
+    end
+
     def deactivate
         begin
           coupon = Coupon.find(params[:id])

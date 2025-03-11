@@ -9,6 +9,8 @@ describe Merchant, type: :model do
     it { should have_many :items }
     it { should have_many :invoices }
     it { should have_many(:customers).through(:invoices) }
+    it { should have_many(:coupons) }
+    it { should have_many(:invoices) }
   end
 
   describe "class methods" do
@@ -90,6 +92,23 @@ describe Merchant, type: :model do
       expect(merchant.invoices_filtered_by_status("packaged")).to eq([inv_3_packaged])
       expect(merchant.invoices_filtered_by_status("returned")).to eq([inv_5_returned])
       expect(other_merchant.invoices_filtered_by_status("packaged")).to eq([inv_4_packaged])
+    end
+  end
+
+  describe "coupon methods" do # Inconsistent because of time, If extra time ill refactor
+    let!(:merchant) { create(:merchant) }
+    let!(:coupon1) { create(:coupon, merchant: merchant) }
+    let!(:coupon2) { create(:coupon, merchant: merchant) }
+    let!(:invoice1) { create(:invoice, merchant: merchant, coupon: coupon1) }
+    let!(:invoice2) { create(:invoice, merchant: merchant, coupon: coupon2) }
+    let!(:invoice3) { create(:invoice, merchant: merchant) }
+  
+    it "returns the correct count of coupons for the merchant" do
+      expect(merchant.coupons_count).to eq(2)
+    end
+
+    it "returns the correct count of invoices with applied coupons" do
+      expect(merchant.invoice_coupon_count).to eq(2) # Only invoices with a coupon count will be counted
     end
   end
 end
