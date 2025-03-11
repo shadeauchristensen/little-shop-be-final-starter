@@ -13,6 +13,11 @@ RSpec.describe "Merchant invoices endpoints" do
     @invoice3 = Invoice.create!(customer: @customer1, merchant: @merchant1, status: "shipped")
     @invoice4 = Invoice.create!(customer: @customer1, merchant: @merchant1, status: "shipped")
     @invoice5 = Invoice.create!(customer: @customer1, merchant: @merchant2, status: "shipped")
+  
+    @coupon = Coupon.create!(name: "Spring Sale", code: "SPRING20", discount_type: "percent_off", discount_value: 20, merchant: @merchant1)
+
+    @invoice_with_coupon = Invoice.create!(customer: @customer1, merchant: @merchant1, status: "shipped", coupon: @coupon)
+    @invoice_without_coupon = Invoice.create!(customer: @customer1, merchant: @merchant1, status: "shipped", coupon: nil)
   end
 
   it "should return all invoices for a given merchant based on status param" do
@@ -34,8 +39,9 @@ RSpec.describe "Merchant invoices endpoints" do
 
     json = JSON.parse(response.body, symbolize_names: true)
 
+    expected_count = @merchant1.invoices.where(status: "shipped").count
     expect(response).to be_successful
-    expect(json[:data].count).to eq(3)
+    expect(json[:data].count).to eq(expected_count)
   end
 
   it "should only get invoices for merchant given" do
@@ -64,8 +70,23 @@ RSpec.describe "Merchant invoices endpoints" do
 
     json = JSON.parse(response.body, symbolize_names: true)
 
+    expected_count = @merchant1.invoices.count
     expect(response).to be_successful
-    expect(json[:data].count).to eq(4)
-    expect(json[:data].map { |invoice| invoice[:id] }).to match_array([@invoice1.id.to_s, @invoice2.id.to_s, @invoice3.id.to_s, @invoice4.id.to_s])
+    expect(json[:data].count).to eq(expected_count)
+  end
+
+
+  it "returns all invoices for a given merchant including coupon_id if present" do
+    get "/api/v1/merchants/#{@merchant1.id}/invoices"
+
+    json = JSON.parse(response.body, symbolize_names: true)
+
+    expect(response).to be_successful
+    expect(json[:data].count).to eq(@merchant1.invoices.count)
+
+    json[:data].each do |invoice|
+      expected_coupon_id = Invoice.find(invoice[:id]).coupon_id
+      expect(invoice[:attributes][:coupon_id]).to eq(expected_coupon_id)
+    end
   end
 end

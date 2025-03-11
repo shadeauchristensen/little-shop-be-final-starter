@@ -2,7 +2,8 @@ class Api::V1::Merchants::CouponsController < ApplicationController
     def index
         begin
             merchant = Merchant.find(params[:merchant_id])
-            coupons = merchant.coupons
+            coupons = Coupon.filter_by_status(merchant, params[:status])
+            
             render json: CouponSerializer.new(coupons)
             
         rescue ActiveRecord::RecordNotFound
