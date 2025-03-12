@@ -27,24 +27,27 @@ class Coupon < ApplicationRecord
         invoices.where(status: 'pending').exists?
     end
 
-    def deactivate!
-        if has_pending_invoices?
-          raise ActiveRecord::RecordInvalid, "Coupon cannot be deactivated while it has pending invoices."
-        end
-        update!(active: false)
-    end
-
     def cannot_deactivate_with_pending_invoices
         if has_pending_invoices? && !active
           errors.add(:base, "Cannot deactivate coupon with pending invoices")
         end
     end
 
+    def can_be_deactivated?
+        !has_pending_invoices?
+    end
+    
+    def deactivate!
+        raise ActiveRecord::RecordInvalid, "Coupon cannot be deactivated while it has pending invoices." unless can_be_deactivated?
+    
+        update!(active: false)
+    end
+
     def can_be_activated?
         merchant.coupons.where(active: true).count < 5
-      end
+    end
     
-      def activate!
+    def activate!
         raise ActiveRecord::RecordInvalid, "Merchant cannot have more than 5 active coupons." unless can_be_activated?
         
         update!(active: true)

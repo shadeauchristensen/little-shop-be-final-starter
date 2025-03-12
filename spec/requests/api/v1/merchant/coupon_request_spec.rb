@@ -45,6 +45,15 @@ RSpec.describe "Merchants Coupons API", type: :request do
           expect(coupon_attributes).to have_key(:active)
         end
       end
+
+      it "returns 404 if merchant is not found" do
+        get "/api/v1/merchants/999999/coupons" # Non-existent merchant
+        
+        json = JSON.parse(response.body, symbolize_names: true)
+      
+        expect(response).to have_http_status(:not_found)
+        expect(json[:error]).to eq("Merchant not found")
+      end
     end
 
     describe "GET /api/v1/merchants/:merchant_id/coupons/:id" do
@@ -71,6 +80,25 @@ RSpec.describe "Merchants Coupons API", type: :request do
 
         expect(data_of_coupon[:attributes]).to have_key(:usage_count)
         expect(data_of_coupon[:attributes][:usage_count]).to eq(3)
+      end
+
+      it "returns 404 if merchant is not found when viewing a coupon" do
+        get "/api/v1/merchants/999999/coupons/1" # Non-existent merchant
+      
+        json = JSON.parse(response.body, symbolize_names: true)
+      
+        expect(response).to have_http_status(:not_found)
+        expect(json[:error]).to eq("Merchant or Coupon not found")
+      end
+      
+      it "returns 404 if coupon is not found for a merchant" do
+        merchant = create(:merchant)
+        get "/api/v1/merchants/#{merchant.id}/coupons/999999" # Non-existent coupon
+      
+        json = JSON.parse(response.body, symbolize_names: true)
+      
+        expect(response).to have_http_status(:not_found)
+        expect(json[:error]).to eq("Merchant or Coupon not found")
       end
     end
 
@@ -119,28 +147,43 @@ RSpec.describe "Merchants Coupons API", type: :request do
         json = JSON.parse(response.body, symbolize_names: true)
         expect(json[:errors]).to include("Merchant cannot have more than 5 active coupons.")
       end
+
+      it "returns 404 if merchant is not found when creating a coupon" do
+        post "/api/v1/merchants/999999/coupons", params: {
+          name: "Test Coupon",
+          code: "TEST123",
+          discount_type: "percent",
+          discount_value: 10,
+          active: true
+        }, as: :json
+      
+        json = JSON.parse(response.body, symbolize_names: true)
+      
+        expect(response).to have_http_status(:not_found)
+        expect(json[:error]).to eq("Merchant not found")
+      end
     end
 
     describe "PATCH /api/v1/merchants/:merchant_id/coupons/:id/deactivate" do
-      it "successfully deactivates a coupon" do
-        coupon = create(:coupon, merchant: @merchant, active: true)
+      let!(:merchant) { create(:merchant) }
+      let!(:coupon) { create(:coupon, merchant: merchant, active: true) }
     
-        patch "/api/v1/merchants/#{@merchant.id}/coupons/#{coupon.id}/deactivate"
+      it "successfully deactivates a coupon when there are no pending invoices" do
+        patch "/api/v1/merchants/#{merchant.id}/coupons/#{coupon.id}/deactivate"
     
         expect(response).to have_http_status(:ok)
     
         json = JSON.parse(response.body, symbolize_names: true)
         expect(json[:data][:attributes][:active]).to eq(false)
       end
-
-      it "does not deactivate a coupon if it has pending invoices" do
-        coupon = create(:coupon, merchant: @merchant, active: true)
-        create(:invoice, merchant: @merchant, customer: @customer, coupon: coupon, status: "pending")
-      
-        patch "/api/v1/merchants/#{@merchant.id}/coupons/#{coupon.id}/deactivate"
-      
+    
+      it "fails to deactivate a coupon if it has pending invoices" do
+        create(:invoice, merchant: merchant, coupon: coupon, status: "pending")
+    
+        patch "/api/v1/merchants/#{merchant.id}/coupons/#{coupon.id}/deactivate"
+    
         expect(response).to have_http_status(:unprocessable_entity)
-      
+    
         json = JSON.parse(response.body, symbolize_names: true)
         expect(json[:error]).to eq("Coupon cannot be deactivated while it has pending invoices.")
       end
